@@ -1,21 +1,9 @@
-# signalclaw
+# SignalClaw
 
 A locked-down [OpenClaw](https://docs.openclaw.ai) assistant for your job search, that you can text.
 
-signalclaw sets up OpenClaw on a Mac so you can reach your assistant over iMessage, while it runs in a sandbox with no network, no access to your files and no way to message anyone but you. A daily job check runs beside it, and the assistant can tell you how that went without being given any extra access.
+SignalClaw sets up OpenClaw on a Mac so you can reach your assistant over iMessage, while it runs in a sandbox with no network, no access to your files and no way to message anyone but you. A daily job check runs beside it, and the assistant can tell you how that went without being given any extra access.
 
-### What it does:
-- **Sandboxed:** the assistant runs in a Docker container with no network. The only folder it can see is its own workspace. If the sandbox isn't available, it refuses rather than running anything on your Mac.
-- **Just you:** only your number gets through. It can't message anyone else, publish anything or change its own settings.
-- **Knows about your daily job:** a daily scheduled job, such as a check that saved job postings are still open, writes a small status file the assistant can read. So you can text "did the checker run today?" and get a straight answer without giving the assistant any extra access.
-- **Texts you when something breaks:** if the daily job fails or the Mac restarts, a plain script sends the text, with no AI involved.
-
-### How to use it:
-1. Install OpenClaw and Docker in a dedicated, non-admin macOS user, and set up iMessage.
-2. Apply the hardening settings (config/hardening.batch.json) and add your own number to the allowlist.
-3. Paste the checker section into the assistant's AGENTS.md.
-4. Schedule your daily check with scripts/install.sh.
-5. Text the assistant.
 
 ```
 You (iMessage)  <--->  OpenClaw gateway  <--->  Assistant (Docker sandbox, no network)
@@ -28,15 +16,25 @@ You (iMessage)  <--->  OpenClaw gateway  <--->  Assistant (Docker sandbox, no ne
                      daily job check (e.g. signalcheck)
 ```
 
-## What you get
+## What it does
 
-- **An assistant you can text.** Only your number gets through. Group chats and attachments are ignored.
-- **A sandbox that fails closed.** The assistant's commands run in a Docker container with no network, and the only folder it can see is its own workspace. If Docker isn't running, it refuses rather than running anything on your Mac.
-- **"Did the checker run today?"** Ask by text and get a straight answer: when it ran, how many jobs are still open, which ones closed, or that it didn't run at all.
-- **Texts when something breaks**, sent by plain scripts with no model call: when the daily check fails, and when the Mac restarts (with the shutdown cause).
+- **Sandboxed, and fails closed.** The assistant runs in a Docker container with no network. The only folder it can see is its own workspace. If Docker isn't running, it refuses rather than running anything on your Mac.
+- **Just you.** Only your number gets through; group chats and attachments are ignored. It can't message anyone else, publish anything or change its own settings.
+- **Knows about your daily job.** A scheduled job, such as a check that saved job postings are still open, writes a small status file the assistant can read. Text "did the checker run today?" and get a straight answer: when it ran, how many jobs are still open, which ones closed, or that it didn't run at all. The assistant gets no extra access.
+- **Texts you when something breaks.** If the daily job fails, or the Mac restarts (with the shutdown cause), a plain script sends the text, with no AI involved.
 - **Every setting explained.** See [docs/security.md](docs/security.md).
 
-signalclaw pairs with **signalcheck** (coming soon), a separate tool that checks whether saved job postings are really still open. You can use either one without the other: signalclaw's scheduler runs any command.
+## How to use it
+
+1. Install OpenClaw and Docker in a dedicated, non-admin macOS user, and set up iMessage.
+2. Apply the hardening settings (`config/hardening.batch.json`) and add your own number to the allowlist.
+3. Paste the checker section into the assistant's `AGENTS.md`.
+4. Schedule your daily check with `scripts/install.sh`.
+5. Text the assistant.
+
+Step-by-step commands are in [Setup](#setup) below.
+
+SignalClaw pairs with **SignalCheck** (coming soon), a separate tool that checks whether saved job postings are really still open. You can use either one without the other: SignalClaw's scheduler runs any command.
 
 ## Requirements
 
@@ -78,7 +76,7 @@ scripts/install.sh --print --check "YOUR CHECK COMMAND" --at 05:30 --restart-ale
 scripts/install.sh         --check "YOUR CHECK COMMAND" --at 05:30 --restart-alert
 ```
 
-With signalcheck, add `--results /path/to/results/latest.json` so the status file includes the counts and closed jobs. If the Mac uses automatic login so everything comes back after a power cut, add `--lock-at-login` to lock the screen again a minute later.
+With SignalCheck, add `--results /path/to/results/latest.json` so the status file includes the counts and closed jobs. If the Mac uses automatic login so everything comes back after a power cut, add `--lock-at-login` to lock the screen again a minute later.
 
 **7. Try it.** Run the check once now with `launchctl kickstart gui/$(id -u)/com.signalclaw.check`. When it finishes, text the assistant "did the checker run today?"
 
@@ -86,7 +84,7 @@ With signalcheck, add `--results /path/to/results/latest.json` so the status fil
 
 | Path | What it is |
 |---|---|
-| `config/hardening.batch.json` | Every OpenClaw setting signalclaw changes, as one `openclaw config set` batch |
+| `config/hardening.batch.json` | Every OpenClaw setting SignalClaw changes, as one `openclaw config set` batch |
 | `agent/AGENTS-checker-section.md` | The instructions section that tells the assistant how to answer about the check |
 | `scripts/run-with-status.sh` | Runs the check with a time limit, writes the status file, texts you on failure |
 | `scripts/write_status.py` | Writes the status file (Python standard library only) |
