@@ -4,6 +4,19 @@ A locked-down [OpenClaw](https://docs.openclaw.ai) assistant for your job search
 
 signalclaw sets up OpenClaw on a Mac so you can reach your assistant over iMessage, while it runs in a sandbox with no network, no access to your files and no way to message anyone but you. A daily job check runs beside it, and the assistant can tell you how that went without being given any extra access.
 
+### What it does:
+- **Sandboxed:** the assistant runs in a Docker container with no network. The only folder it can see is its own workspace. If the sandbox isn't available, it refuses rather than running anything on your Mac.
+- **Just you:** only your number gets through. It can't message anyone else, publish anything or change its own settings.
+- **Knows about your daily job:** a daily scheduled job, such as a check that saved job postings are still open, writes a small status file the assistant can read. So you can text "did the checker run today?" and get a straight answer without giving the assistant any extra access.
+- **Texts you when something breaks:** if the daily job fails or the Mac restarts, a plain script sends the text, with no AI involved.
+
+### How to use it:
+1. Install OpenClaw and Docker in a dedicated, non-admin macOS user, and set up iMessage.
+2. Apply the hardening settings (config/hardening.batch.json) and add your own number to the allowlist.
+3. Paste the checker section into the assistant's AGENTS.md.
+4. Schedule your daily check with scripts/install.sh.
+5. Text the assistant.
+
 ```
 You (iMessage)  <--->  OpenClaw gateway  <--->  Assistant (Docker sandbox, no network)
                               ^                         |
