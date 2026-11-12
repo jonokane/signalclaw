@@ -1,0 +1,33 @@
+[
+  { "path": "agents.defaults.sandbox.mode", "value": "all" },
+  { "path": "agents.defaults.sandbox.scope", "value": "agent" },
+  { "path": "agents.defaults.sandbox.backend", "value": "docker" },
+  { "path": "agents.defaults.sandbox.workspaceAccess", "value": "rw" },
+  { "path": "agents.defaults.sandbox.docker.network", "value": "none" },
+  { "path": "agents.defaults.heartbeat.every", "value": "0m" },
+
+  { "path": "tools.profile", "value": "coding" },
+  { "path": "tools.exec.host", "value": "sandbox" },
+  { "path": "tools.fs.workspaceOnly", "value": true },
+  { "path": "tools.elevated.enabled", "value": false },
+  { "path": "tools.deny", "value": ["github_publish", "sessions_send", "message"] },
+
+  { "path": "gateway.mode", "value": "local" },
+  { "path": "gateway.bind", "value": "loopback" },
+  { "path": "gateway.tailscale.mode", "value": "off" },
+  { "path": "discovery.mdns.mode", "value": "off" },
+  { "path": "telemetry.enabled", "value": false },
+
+  { "path": "plugins.entries.bonjour.enabled", "value": false },
+  { "path": "plugins.entries.browser.enabled", "value": false },
+  { "path": "plugins.entries.cua-computer.enabled", "value": false },
+  { "path": "plugins.entries.file-transfer.enabled", "value": false },
+  { "path": "plugins.entries.canvas.enabled", "value": false },
+  { "path": "plugins.entries.linux-node.enabled", "value": false },
+  { "path": "plugins.entries.geolocation.enabled", "value": false },
+
+  { "path": "channels.imessage.dmPolicy", "value": "allowlist" },
+  { "path": "channels.imessage.groupPolicy", "value": "disabled" },
+  { "path": "channels.imessage.configWrites", "value": false },
+  { "path": "channels.imessage.includeAttachments", "value": false }
+]
