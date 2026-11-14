@@ -34,15 +34,17 @@ You (iMessage)  <--->  OpenClaw gateway  <--->  Assistant (Docker sandbox, no ne
 
 Step-by-step commands are in [Setup](#setup) below.
 
-SignalClaw pairs with **SignalCheck** (coming soon), a separate tool that checks whether saved job postings are really still open. You can use either one without the other: SignalClaw's scheduler runs any command.
+SignalClaw pairs with **[SignalCheck](https://github.com/jonokane/signalcheck)**, a separate tool that checks whether saved job postings are really still open. You can use either one without the other: SignalClaw's scheduler runs any command.
 
 ## Requirements
 
-- A Mac that stays on. Tested on an M4 Mac mini running macOS 15 (Sequoia), headless over Screen Sharing.
+- A Mac that stays on, with the assistant's macOS user **logged in**. Tested on an M4 Mac mini running macOS 15 (Sequoia), headless over Screen Sharing.
 - A dedicated Standard (non-admin) macOS user for the assistant.
 - [OpenClaw](https://docs.openclaw.ai) 2026.11 or later, and [Docker Desktop](https://www.docker.com/products/docker-desktop/).
 - An Anthropic API key made for this, with a monthly spend limit.
 - A separate Apple ID signed into Messages in the assistant's macOS user.
+
+**"On" means logged in.** The OpenClaw gateway and the daily check are LaunchAgents, so they only run while the assistant's macOS user is logged in. If that user is logged out, the assistant stops answering texts and the daily check doesn't run, even though the Mac is on. Automatic login brings everything back after a restart, but not after a log out. To use another account on the same Mac, switch with Fast User Switching (the user menu in the menu bar or Control Center) instead of choosing Log Out. `--catch-up` (step 6) runs a check that was missed, once the user is logged in again.
 
 ## Setup
 
@@ -72,11 +74,19 @@ Restart the gateway after changing config (see the OpenClaw docs for your instal
 **6. Schedule the daily check.** Preview the LaunchAgents, then install them:
 
 ```sh
-scripts/install.sh --print --check "YOUR CHECK COMMAND" --at 05:30 --restart-alert
-scripts/install.sh         --check "YOUR CHECK COMMAND" --at 05:30 --restart-alert
+scripts/install.sh --print --check "YOUR CHECK COMMAND" --at 05:30 --catch-up --restart-alert
+scripts/install.sh         --check "YOUR CHECK COMMAND" --at 05:30 --catch-up --restart-alert
 ```
 
-With SignalCheck, add `--results /path/to/results/latest.json` so the status file includes the counts and closed jobs. If the Mac uses automatic login so everything comes back after a power cut, add `--lock-at-login` to lock the screen again a minute later.
+With [SignalCheck](https://github.com/jonokane/signalcheck) installed as its README describes, and your saved jobs in `~/jobs/jobs.csv`, that looks like:
+
+```sh
+scripts/install.sh --check "$HOME/.signalcheck/bin/signalcheck run jobs.csv" \
+  --workdir "$HOME/jobs" --results "$HOME/jobs/results/latest.json" \
+  --name "job checker" --at 05:30 --catch-up --restart-alert
+```
+
+`--results` lets the status file include the counts and closed jobs. `--catch-up` covers a run launchd skipped: if your user was logged out or the Mac was off at the scheduled time, the check starts at your next login and texts you once. If the Mac uses automatic login so everything comes back after a power cut, add `--lock-at-login` to lock the screen again a minute later.
 
 **7. Try it.** Run the check once now with `launchctl kickstart gui/$(id -u)/com.signalclaw.check`. When it finishes, text the assistant "did the checker run today?"
 
@@ -89,6 +99,7 @@ With SignalCheck, add `--results /path/to/results/latest.json` so the status fil
 | `scripts/run-with-status.sh` | Runs the check with a time limit, writes the status file, texts you on failure |
 | `scripts/write_status.py` | Writes the status file (Python standard library only) |
 | `scripts/notify.sh` | Sends one text through `openclaw message send`. Reads your number from OpenClaw's config at send time. |
+| `scripts/catch-up.sh` | At login, runs a check that was missed today (user logged out or Mac off) and texts you once |
 | `scripts/restart-alert.sh` | After a restart, waits for the gateway and texts you a status line |
 | `scripts/lock-at-login.sh` | Optional: locks the screen after automatic login |
 | `scripts/install.sh`, `scripts/uninstall.sh` | Add or remove the LaunchAgents. No admin needed. |

@@ -18,7 +18,7 @@ This is the whole interface between the scheduled job and the agent. The agent n
 | The job ran past the time limit | `"status": "failed"`, `"exitCode": 124` |
 | The wrapper itself was killed or stopped early | `"status": "failed"`, written by an EXIT trap |
 | `SIGNALCLAW_RESULTS` is set but no results were written this run | `"status": "failed"`, even if the job exited 0 |
-| The Mac was off at the scheduled time | Nothing. The old file stays, so `finishedAt` is not today. |
+| The Mac was off, or the assistant's macOS user was logged out, at the scheduled time | Nothing. The old file stays, so `finishedAt` is not today. With `--catch-up`, the run starts at the next login and writes the file as usual (with that later `startedAt`). |
 
 The file is written to a temporary name and renamed into place, so the agent never reads half a file.
 

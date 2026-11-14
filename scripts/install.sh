@@ -2,25 +2,29 @@
 # Install signalclaw's LaunchAgents for the current macOS user. No admin needed.
 #
 #   install.sh --check "COMMAND" [--at HH:MM] [--results PATH] [--workdir DIR]
-#              [--name TEXT] [--restart-alert] [--lock-at-login] [--print]
+#              [--name TEXT] [--catch-up] [--restart-alert] [--lock-at-login]
+#              [--print]
 #
 #   --check "COMMAND"  the job to run daily, e.g. signalcheck's run command
 #   --at HH:MM         daily start time, local (default 05:30)
 #   --results PATH     a signalcheck results file to summarize in the status file
 #   --workdir DIR      folder the job starts in (default: your home folder)
 #   --name TEXT        name for the status file and alerts (default "job checker")
+#   --catch-up         also install the missed-run catch-up: at login, if
+#                      today's run was missed (logged out or Mac off), run
+#                      it now and text you once. Recommended.
 #   --restart-alert    also install the after-restart text
 #   --lock-at-login    also install the lock-after-automatic-login safeguard
 #   --print            print the plists instead of installing them
 #
-# Labels: com.signalclaw.check, com.signalclaw.restart-alert,
-# com.signalclaw.lock-at-login. Logs: ~/Library/Logs/signalclaw/.
+# Labels: com.signalclaw.check, com.signalclaw.catch-up,
+# com.signalclaw.restart-alert, com.signalclaw.lock-at-login. Logs: ~/Library/Logs/signalclaw/.
 # Remove with uninstall.sh.
 set -e
 HERE="$(cd "$(dirname "$0")" && pwd)"
 AGENTS="$HOME/Library/LaunchAgents"
 LOGS="$HOME/Library/Logs/signalclaw"
-check="" at="05:30" results="" workdir="$HOME" name="job checker" restart=0 lock=0 print=0
+check="" at="05:30" results="" workdir="$HOME" name="job checker" catchup=0 restart=0 lock=0 print=0
 while [ $# -gt 0 ]; do
   case "$1" in
     --check) check="$2"; shift 2 ;;
@@ -28,10 +32,11 @@ while [ $# -gt 0 ]; do
     --results) results="$2"; shift 2 ;;
     --workdir) workdir="$2"; shift 2 ;;
     --name) name="$2"; shift 2 ;;
+    --catch-up) catchup=1; shift ;;
     --restart-alert) restart=1; shift ;;
     --lock-at-login) lock=1; shift ;;
     --print) print=1; shift ;;
-    -h|--help) sed -n '2,20p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    -h|--help) sed -n '2,24p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *) echo "unknown option: $1 (try --help)" >&2; exit 2 ;;
   esac
 done
@@ -121,15 +126,43 @@ login_plist() {   # login_plist LABEL SCRIPT COMMENT LOGNAME
 EOF
 }
 
+catchup_plist() {
+  head_plist com.signalclaw.catch-up "signalclaw: at login, if today's $at run ($name) was missed, start it now and text once (no model call)."
+  cat <<EOF
+	<key>ProgramArguments</key>
+	<array>
+		<string>/bin/sh</string>
+		<string>$(xml "$HERE/catch-up.sh")</string>
+	</array>
+	<key>EnvironmentVariables</key>
+	<dict>
+		<key>SIGNALCLAW_AT</key>
+		<string>$(xml "$at")</string>
+		<key>SIGNALCLAW_JOB_NAME</key>
+		<string>$(xml "$name")</string>
+	</dict>
+	<key>RunAtLoad</key>
+	<true/>
+	<key>StandardOutPath</key>
+	<string>$(xml "$LOGS/catch-up.log")</string>
+	<key>StandardErrorPath</key>
+	<string>$(xml "$LOGS/catch-up.log")</string>
+</dict>
+</plist>
+EOF
+}
+
 render() {   # render LABEL
   case "$1" in
     com.signalclaw.check) check_plist ;;
+    com.signalclaw.catch-up) catchup_plist ;;
     com.signalclaw.restart-alert) login_plist "$1" restart-alert.sh "signalclaw: after a restart, wait for the OpenClaw gateway, then text a status line (no model call)." restart-alert.log ;;
     com.signalclaw.lock-at-login) login_plist "$1" lock-at-login.sh "signalclaw: about 60 s after automatic login, sleep the display so the session locks." lock-at-login.log ;;
   esac
 }
 
 labels="com.signalclaw.check"
+[ "$catchup" = 1 ] && labels="$labels com.signalclaw.catch-up"
 [ "$restart" = 1 ] && labels="$labels com.signalclaw.restart-alert"
 [ "$lock" = 1 ] && labels="$labels com.signalclaw.lock-at-login"
 
@@ -147,6 +180,8 @@ for l in $labels; do
   mv -f "$f.tmp" "$f"
   launchctl bootout "gui/$U/$l" 2>/dev/null || true
   # Login jobs (RunAtLoad) start once now; the check job only at its time.
+  # So with --catch-up, if it's already past --at and today's run hasn't
+  # happened, the check starts right away.
   launchctl bootstrap "gui/$U" "$f"
   echo "installed and loaded $l"
 done

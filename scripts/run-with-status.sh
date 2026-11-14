@@ -8,7 +8,8 @@
 # Every run, success or failure, ends by overwriting a status file in the
 # agent's workspace (write_status.py), the one folder the OpenClaw sandbox
 # can see. If this script is killed or stops early, the EXIT trap still writes
-# a "failed" status. A missed run (Mac off) writes nothing, so a stale date in
+# a "failed" status. A missed run (Mac off or user logged out) writes nothing
+# until catch-up.sh starts it at the next login, so a stale date in
 # the file is the signal.
 #
 # On failure or timeout it also sends one text through notify.sh. Nothing on

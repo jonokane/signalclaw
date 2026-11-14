@@ -1,4 +1,4 @@
-"""Tests for write_status.py and run-with-status.sh. No network, no OpenClaw.
+"""Tests for write_status.py, run-with-status.sh, install.sh and catch-up.sh. No network, no OpenClaw.
 
     python3 -m unittest discover -s tests
 """
@@ -145,11 +145,11 @@ class Wrapper(unittest.TestCase):
 
 class Installer(unittest.TestCase):
     def test_print_renders_valid_plists(self):
-        p = subprocess.run(["/bin/sh", str(SCRIPTS / "install.sh"), "--print", "--at", "06:05", "--restart-alert",
+        p = subprocess.run(["/bin/sh", str(SCRIPTS / "install.sh"), "--print", "--at", "06:05", "--catch-up", "--restart-alert",
                             "--lock-at-login", "--check", "cd ~/jobs && signalcheck run <list> & echo \"done\""],
                            capture_output=True, text=True, check=True)
         parts = [x for x in p.stdout.split("----- ") if x.strip()]
-        self.assertEqual(len(parts), 3)
+        self.assertEqual(len(parts), 4)
         for part in parts:
             body = part.split("\n", 1)[1]
             lint = subprocess.run(["plutil", "-lint", "-"], input=body, capture_output=True, text=True)
@@ -157,11 +157,56 @@ class Installer(unittest.TestCase):
         self.assertIn("<integer>6</integer>", parts[0])
         self.assertIn("<integer>5</integer>", parts[0])
         self.assertIn("&lt;list&gt; &amp; echo &quot;done&quot;", parts[0])
+        self.assertIn("com.signalclaw.catch-up", parts[1])
+        self.assertIn("<string>06:05</string>", parts[1])
 
     def test_bad_time_rejected(self):
         p = subprocess.run(["/bin/sh", str(SCRIPTS / "install.sh"), "--print", "--check", "true", "--at", "25:00"],
                            capture_output=True, text=True)
         self.assertNotEqual(p.returncode, 0)
+
+
+class CatchUp(unittest.TestCase):
+    """catch-up.sh's decision, in dry-run mode: never starts a job or texts."""
+
+    def setUp(self):
+        self.dir = tempfile.TemporaryDirectory()
+        self.status = Path(self.dir.name) / "status.json"
+
+    def tearDown(self):
+        self.dir.cleanup()
+
+    def decide(self, now, started=None, at="05:30"):
+        if started is not None:
+            self.status.write_text(json.dumps({"startedAt": started, "status": "ok"}))
+        env = dict(os.environ, SIGNALCLAW_STATUS_FILE=str(self.status), SIGNALCLAW_AT=at,
+                   SIGNALCLAW_CHECK_LABEL="com.signalclaw.test-not-loaded",
+                   CATCHUP_NOW=now, CATCHUP_DRY_RUN="1")
+        p = subprocess.run(["/bin/sh", str(SCRIPTS / "catch-up.sh")], env=env,
+                           capture_output=True, text=True, timeout=30)
+        self.assertEqual(p.returncode, 0, p.stderr)
+        return p.stdout
+
+    def test_before_the_scheduled_time_does_nothing(self):
+        self.assertIn("before today's 05:30 run", self.decide("2026-11-14 05:29", "2026-11-13T05:30:05-08:00"))
+
+    def test_respects_a_custom_time(self):
+        self.assertIn("before today's 09:45 run", self.decide("2026-11-14 09:05", at="09:45"))
+
+    def test_already_ran_today_does_nothing(self):
+        self.assertIn("already happened", self.decide("2026-11-14 13:23", "2026-11-14T05:30:05-08:00"))
+
+    def test_missed_run_would_start(self):
+        out = self.decide("2026-11-14 13:23", "2026-11-13T05:30:05-08:00")
+        self.assertIn("missed today's 05:30 run (last run started 2026-11-13)", out)
+        self.assertIn("dry run: would kickstart", out)
+
+    def test_no_status_file_counts_as_missed(self):
+        self.assertIn("last run started never", self.decide("2026-11-14 05:30"))
+
+    def test_unreadable_status_file_counts_as_missed(self):
+        self.status.write_text("not json")
+        self.assertIn("last run started never", self.decide("2026-11-14 08:00"))
 
 
 if __name__ == "__main__":
